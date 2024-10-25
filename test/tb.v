@@ -14,6 +14,13 @@ module tb ();
     #1;
   end
 
+  reg i_run;
+  reg i_step;
+  reg i_load;
+  reg i_dump;
+  reg i_shift_in;
+  reg [1:0] i_reg_sel;
+
   // Wire up the inputs and outputs:
   reg clk;
   reg rst_n;
@@ -24,13 +31,6 @@ module tb ();
   wire [7:0] uio_out;
   wire [7:0] uio_oe;
 
-  reg i_run;
-  reg i_step;
-  reg i_load;
-  reg i_dump;
-  reg i_shift_in;
-  reg [1:0] i_reg_sel;
-
   wire o_cpu_sleep = uo_out[0];
   wire o_cpu_stop = uo_out[1];
   wire o_cpu_wait_delay = uo_out[2];
@@ -38,13 +38,6 @@ module tb ();
 
   // Replace tt_um_example with your module name:
   tt_um_urish_spell user_project (
-
-      // Include power ports for the Gate Level test:
-`ifdef GL_TEST
-      .VPWR(1'b1),
-      .VGND(1'b0),
-`endif
-
       .ui_in  (ui_in),    // Dedicated inputs
       .uo_out (uo_out),   // Dedicated outputs
       .uio_in (uio_in),   // IOs: Input path
