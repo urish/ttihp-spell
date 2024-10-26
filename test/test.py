@@ -3,7 +3,7 @@
 
 import cocotb
 from cocotb.clock import Clock
-from cocotb.triggers import ClockCycles
+from cocotb.triggers import ClockCycles, NextTimeStep
 from spell_controller import SpellController
 import random
 
@@ -313,21 +313,25 @@ async def test_porta(dut):
     await spell.push(0xC6)
     await spell.push(PORTA)
     await spell.exec_opcode("w")
+    await NextTimeStep()
     assert dut.uo_out.value & 0xF0 == 0x00
 
     await spell.push(0xFF)
     await spell.push(DDRA)
     await spell.exec_opcode("w")
+    await NextTimeStep()
     assert dut.uo_out.value == 0xC6
 
     await spell.push(0xF0)
     await spell.push(DDRA)
     await spell.exec_opcode("w")
+    await NextTimeStep()
     assert dut.uo_out.value & 0xF0 == 0xC0
 
     await spell.push(0x80)
     await spell.push(PINA)
     await spell.exec_opcode("w")
+    await NextTimeStep()
     assert dut.uo_out.value & 0xF0 == 0x40
 
 
