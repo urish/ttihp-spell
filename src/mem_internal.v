@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: © 2021 Uri Shaked <uri@wokwi.com>
+// SPDX-FileCopyrightText: © 2021-2024 Uri Shaked <uri@wokwi.com>
 // SPDX-License-Identifier: MIT
 
 `default_nettype none
@@ -11,59 +11,50 @@ module spell_mem_internal (
     input wire [7:0] data_in,
     input wire memory_type_data,
     input wire write,
-    output reg [7:0] data_out,
+    output wire [7:0] data_out,
     output reg data_ready
 );
 
-  localparam code_size = 256;
-  localparam data_size = 32;
+  // Initialize code mem to 0xff, data mem to 0x00
+  reg mem_initialized;
+  reg [8:0] mem_init_addr;
+  wire [7:0] mem_init_data = mem_init_addr < 9'd256 ? 8'hff : 8'h00;
 
-  localparam code_bits = $clog2(code_size);
-  localparam data_bits = $clog2(data_size);
-
-  reg [7:0] code_mem[code_size-1:0];
-  reg [7:0] data_mem[data_size-1:0];
-
-  wire [code_bits-1:0] code_addr = addr[code_bits-1:0];
-  wire [data_bits-1:0] data_addr = addr[data_bits-1:0];
-
-  reg [1:0] cycles;
-
-  integer i;
+  RM_IHPSG13_1P_1024x8_c2_bm_bist sram (
+      .A_CLK(clk),
+      .A_MEN(rst_n),
+      .A_WEN((select && write) || (rst_n && ~mem_initialized)),
+      .A_REN(select),
+      .A_ADDR(mem_initialized ? {1'b0, memory_type_data, addr} : mem_init_addr),
+      .A_DIN(mem_initialized ? data_in : mem_init_data),
+      .A_DLY(1'b1),
+      .A_DOUT(data_out),
+      .A_BM(8'b11111111),
+      .A_BIST_CLK(1'b0),
+      .A_BIST_EN(1'b0),
+      .A_BIST_MEN(1'b0),
+      .A_BIST_WEN(1'b0),
+      .A_BIST_REN(1'b0),
+      .A_BIST_ADDR(10'b0),
+      .A_BIST_DIN(8'b0),
+      .A_BIST_BM(8'b0)
+  );
 
   always @(posedge clk) begin
     if (~rst_n) begin
-      cycles <= 0;
-      data_ready <= 0;
-      for (i = 0; i < code_size; i++) code_mem[i] <= 8'h00;
-      for (i = 0; i < data_size; i++) data_mem[i] <= 8'h00;
+      data_ready <= 1'b0;
+      mem_initialized <= 1'b0;
+      mem_init_addr <= 9'd0;
     end else begin
-      if (!select) begin
-        data_out   <= 8'bx;
-        data_ready <= 1'b0;
-`ifdef SPELL_INTERNAL_MEM_DELAY
-        cycles <= 2'b11;
-`endif  /* SPELL_INTERNAL_MEM_DELAY */
-      end else if (cycles > 0) begin
-        cycles <= cycles - 1;
-      end else begin
-        data_ready <= 1'b1;
-        if (write) begin
-          if (memory_type_data && addr < data_size) begin
-            data_mem[data_addr] <= data_in;
-          end else if (!memory_type_data && addr < code_size) begin
-            // Code memory is inverted, to make uninitialized memory appear as 0xff
-            code_mem[code_addr] <= ~data_in;
-          end
-        end else begin
-          data_out <= memory_type_data ? 8'h00 : 8'hff;
-          if (memory_type_data && addr < data_size) begin
-            data_out <= data_mem[data_addr];
-          end else if (!memory_type_data && addr < code_size) begin
-            data_out <= ~code_mem[code_addr];
-          end
+      if (!mem_initialized) begin
+        mem_init_addr <= mem_init_addr + 1;
+        if (mem_init_addr == 9'd511) begin
+          mem_initialized <= 1'b1;
         end
+      end else begin
+        data_ready <= select;
       end
     end
   end
+
 endmodule
